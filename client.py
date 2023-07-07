@@ -4,16 +4,7 @@ import asyncio
 import packets
 import re
 import random
-
-
-def _get_topics():
-    from main import topics
-    return topics
-
-
-def _get_id():
-    import main
-    return main.id
+from main import topics, id, start_communication, end_communication, is_communicating
 
 
 _NAME_PATTERN = re.compile("^hwb-.+$")
@@ -33,11 +24,10 @@ class DeviceDiscoverer:
             asyncio.run(self._run_once())
 
     async def _run_once(self):
-        from main import start_communication, is_communicating, end_communication
         addrs = bluetooth.discover_devices(duration=self._search_duration, lookup_names=True)
-        print("found devices:", *addrs, sep="\n\t")
         # double check because the statment before needs time to be executed
         if self._running and not is_communicating():
+            print("found devices:", *addrs, sep="\n\t")
             sub_history = []
             for (addr, name) in addrs:
                 if _NAME_PATTERN.match(name) and not self._is_in_history(addr):
@@ -45,6 +35,8 @@ class DeviceDiscoverer:
                         sub_history.append(addr)
             self._history.pop(0)
             self._history.append(sub_history)
+        else:
+            print("skip connecting to devices, because already in conversation")
     
     def _is_in_history(self, addr: str):
         for sub_history in self._history:
@@ -61,9 +53,8 @@ class DeviceDiscoverer:
         ) as c:
             try:
                 c.connect((addr, 1))
-                topics = _get_topics()
 
-                exchange_packet = packets.InfoExchangePacket(_get_id(), topics)
+                exchange_packet = packets.InfoExchangePacket(id, topics)
                 c.send(exchange_packet.to_bytes())
 
                 packet_bytes = c.recv(_MAX_PACKET_LEN)

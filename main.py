@@ -5,7 +5,6 @@ from typing import Union, List
 
 from server import create_main_loop
 import packets
-from client import DeviceDiscoverer
 
 
 topics = ["Fußball", "Billard", "Klarinette"]
@@ -88,9 +87,11 @@ def on_negotionation(data: ConnectionData, packet: packets.NegotiationPacket, fd
 _current_communication_partner: Union[bytes, None] = None
 
 def start_communication(partner: bytes):
+    global _current_communication_partner
     _current_communication_partner = partner
 
 def end_communication():
+    global _current_communication_partner
     _current_communication_partner = None
 
 def is_communicating(*, with_: Union[bytes, None] = None):
@@ -101,6 +102,7 @@ def is_communicating(*, with_: Union[bytes, None] = None):
 
 
 def main():
+    from client import DeviceDiscoverer
     main_loop = create_main_loop(io_cb)
     dd = DeviceDiscoverer()
     server_thread = threading.Thread(target=main_loop.run)
