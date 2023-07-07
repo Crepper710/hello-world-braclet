@@ -5,6 +5,7 @@ from typing import Union, List
 
 from server import create_main_loop
 import packets
+import hardware
 
 
 topics = ["Fußball", "Billard", "Klarinette"]
@@ -85,10 +86,18 @@ def on_negotionation(data: ConnectionData, packet: packets.NegotiationPacket, fd
 
 
 _current_communication_partner: Union[bytes, None] = None
+_current_thread: Union[threading.Thread, None] = None
 
 def start_communication(partner: bytes):
-    global _current_communication_partner
+    global _current_communication_partner, _current_thread
     _current_communication_partner = partner
+    if _current_thread is not None:
+        if _current_thread.is_alive():
+            print("tried to start communication eventhough the thread is alreadz running")
+            return
+    import hardware
+    _current_thread = threading.Thread(target=lambda: hardware.run_conversation(end_communication))
+    _current_thread.start()
 
 def end_communication():
     global _current_communication_partner
@@ -96,6 +105,9 @@ def end_communication():
 
 def is_communicating(*, with_: Union[bytes, None] = None):
     if with_ is None:
+        if _current_thread is not None:
+            if _current_thread.is_alive():
+                return True
         return _current_communication_partner is not None
     else:
         return _current_communication_partner == with_
